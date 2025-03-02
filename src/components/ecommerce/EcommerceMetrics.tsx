@@ -1,9 +1,44 @@
 "use client";
-import React from "react";
-import Badge from "../ui/badge/Badge";
-import { ArrowDownIcon, ArrowUpIcon, BoxIconLine, GroupIcon } from "@/icons";
+import { BoxIconLine, GroupIcon } from "@/icons";
+// import Badge from "../ui/badge/Badge";
+ import { AxiosError } from 'axios';
+import { Loader2 } from "lucide-react";
+import { useEffect, useState } from 'react';
 
-export const EcommerceMetrics = () => {
+import { getResults } from '../../../api/dashboardManagement';
+
+export const EcommerceMetrics = ({ promotionId, anneeId }) => {
+  const [results, setResults] = useState({ passed: 0, failed: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        const data = await getResults(promotionId, anneeId);
+        setResults(data); 
+      } catch (err) {
+        if (err instanceof AxiosError) {
+          setError(err.response?.data?.message || 'Erreur lors de la récupération des résultats'); // Gérer l'erreur Axios
+        } else {
+          setError('Erreur inattendue lors de la récupération des résultats'); // Gérer les autres erreurs
+        }
+      } finally {
+        setLoading(false); // Fin du chargement
+      }
+    };
+
+    fetchResults();
+  }, [promotionId, anneeId]);
+
+  if (loading) {
+    return <Loader2 />;
+  }
+
+  if (error) {
+    return <div>Erreur: {error}</div>; // Afficher un message d'erreur
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
       {/* <!-- Metric Item Start --> */}
@@ -15,16 +50,17 @@ export const EcommerceMetrics = () => {
         <div className="flex items-end justify-between mt-5">
           <div>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Customers
+              Nombre de réussites
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
+               {loading ? <Loader2 /> : results.passed}
+
             </h4>
           </div>
-          <Badge color="success">
+          {/* <Badge color="success">
             <ArrowUpIcon />
             11.01%
-          </Badge>
+          </Badge> */}
         </div>
       </div>
       {/* <!-- Metric Item End --> */}
@@ -37,17 +73,17 @@ export const EcommerceMetrics = () => {
         <div className="flex items-end justify-between mt-5">
           <div>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Orders
+              Nombre d&apos;échecs
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              5,359
+               {loading ? <Loader2 /> : results.failed}
             </h4>
           </div>
 
-          <Badge color="error">
+          {/* <Badge color="error">
             <ArrowDownIcon className="text-error-500" />
             9.05%
-          </Badge>
+          </Badge> */}
         </div>
       </div>
       {/* <!-- Metric Item End --> */}
