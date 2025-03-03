@@ -22,10 +22,17 @@ export default function SignInForm() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    login(
-      matricule,
-      password
-    );
+    
+    try {
+      const response = await login(matricule, password);
+      
+      if (response.success) {
+        localStorage.setItem('token', response.data.token);
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Erreur de connexion :", error);
+    }
   };
 
   return (
