@@ -17,21 +17,15 @@ export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [matricule, setMatricule] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const matricule = "";
-    const password = "";
-
-    try {
-      const response = await login(matricule, password);
-      if (response.success) {
-        localStorage.setItem('token', response.data.token);
-        router.push("/");
-      }
-    } catch (error) {
-      console.error("Erreur de connexion :", error);
-    }
+    login(
+      matricule,
+      password
+    );
   };
 
   return (
@@ -53,9 +47,13 @@ export default function SignInForm() {
               <div className="space-y-6">
                 <div>
                   <Label>
-                    Email <span className="text-error-500">*</span>{" "}
+                    Matricule <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input placeholder="info@gmail.com" type="email" />
+                  <Input 
+                    placeholder="info@gmail.com" 
+                    type="text" 
+                    onChange={(e) => setMatricule(e.target.value)} 
+                  />
                 </div>
                 <div>
                   <Label>
@@ -65,6 +63,7 @@ export default function SignInForm() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}

@@ -11,6 +11,8 @@ import {
   HorizontaLDots,
   ListIcon
 } from "../icons/index";
+import { getUser } from "../../api/menuApi";
+
 
 type NavItem = {
   name: string;
@@ -287,6 +289,23 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
+  useEffect(() => {
+    // Close the submenu when the sidebar is collapsed
+    const loginData = {
+      matricule: "7.895.496 N",
+      password: "GDPwZO"
+    };
+
+    getUser(loginData)
+    .then((data) => {
+      console.log(data);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+    
+  }, []);
+
   const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
     setOpenSubmenu((prevOpenSubmenu) => {
       if (
@@ -299,6 +318,8 @@ const AppSidebar: React.FC = () => {
       return { type: menuType, index };
     });
   };
+
+
 
   return (
     <aside
