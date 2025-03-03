@@ -36,12 +36,10 @@ export const login = async (
     if (!response.ok) {
       throw new Error("Erreur lors de la connexion");
     } else {
-      console.log("Response : ", response);
       const resp = await response.json();
 
       const data = resp;
 
-      console.log(data)
       return data; // Retourne les données de la réponse (user, jurys, token)
     }
 
@@ -53,16 +51,8 @@ export const login = async (
 
 // Fonction pour gérer la déconnexion
 export const logout = async (): Promise<void> => {
-  // try {
-  //   const response: AxiosResponse = await api.post('/logout');
-  //   console.log('Déconnexion réussie :', response.data.message);
-  // } catch (error) {
-  //   if (axios.isAxiosError(error)) {
-  //     throw new Error(error.response?.data?.message || 'Erreur lors de la déconnexion');
-  //   } else {
-  //     throw new Error('Erreur inattendue lors de la déconnexion');
-  //   }
-  // }
+  // Suppression du token du localStorage
+  await localStorage.removeItem("token");
 };
 
 // Export des fonctions

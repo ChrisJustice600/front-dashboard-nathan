@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useSidebar } from "../context/SidebarContext";
 import {
   // CalenderIcon,
@@ -11,7 +11,9 @@ import {
   HorizontaLDots,
   ListIcon
 } from "../icons/index";
-import { getUser } from "../../api/menuApi";
+
+import apiAnnees from "../../api/annee";
+import useAuthStore from "../../store/userStore";
 
 
 type NavItem = {
@@ -108,6 +110,8 @@ const othersItems: NavItem[] = [
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const [menu, setMenu] = useState<[] | NavItem[]>([]);
+  const { jurys } = useAuthStore();
   const pathname = usePathname();
 
   const renderMenuItems = (
@@ -116,7 +120,6 @@ const AppSidebar: React.FC = () => {
   ) => (
     
     <ul className="flex flex-col gap-4">
-   
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
@@ -192,44 +195,50 @@ const AppSidebar: React.FC = () => {
               }}
             >
               <ul className="mt-2 space-y-1 ml-9">
-                {nav.subItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link
-                      href={subItem.path}
-                      className={`menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
-                    >
-                      {subItem.name}
-                      <span className="flex items-center gap-1 ml-auto">
-                        {subItem.new && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            new
-                          </span>
-                        )}
-                        {subItem.pro && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            pro
-                          </span>
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                {nav.subItems.map((subItem) => {
+                  
+                  const params = subItem.path.split('/');
+                  const path = menuType == "main" ? subItem.path : `/produits/${params[2]}/${params[3]}`;
+                  return (
+                    <li key={subItem.name}>
+                      <Link
+                        href={path}
+                        className={`menu-dropdown-item ${
+                          isActive(subItem.path)
+                            ? "menu-dropdown-item-active"
+                            : "menu-dropdown-item-inactive"
+                        }`}
+                      >
+                        {subItem.name}
+                        <span className="flex items-center gap-1 ml-auto">
+                          {subItem.new && (
+                            <span
+                              className={`ml-auto ${
+                                isActive(subItem.path)
+                                  ? "menu-dropdown-badge-active"
+                                  : "menu-dropdown-badge-inactive"
+                              } menu-dropdown-badge `}
+                            >
+                              new
+                            </span>
+                          )}
+                          {subItem.pro && (
+                            <span
+                              className={`ml-auto ${
+                                isActive(subItem.path)
+                                  ? "menu-dropdown-badge-active"
+                                  : "menu-dropdown-badge-inactive"
+                              } menu-dropdown-badge `}
+                            >
+                              pro
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                }
+                )}
               </ul>
             </div>
           )}
@@ -289,22 +298,45 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
-  useEffect(() => {
-    // Close the submenu when the sidebar is collapsed
-    const loginData = {
-      matricule: "7.895.496 N",
-      password: "GDPwZO"
-    };
+  const memoizedMenu = useMemo(() => {
+    apiAnnees.getAnnees()
+      .then(api => {
+        const data = api.data;
+        const newMenu = data.map((item: any) => {
+          const subMenu = jurys.filter(jury => jury.id_annee === item.id);
 
-    getUser(loginData)
-    .then((data) => {
-      console.log(data);
-    })
-    .catch((error) => {
-      console.error(error);
-    });
-    
-  }, []);
+          if(subMenu.length > 0) {
+            const subItems = subMenu.map((subItem: any) => {
+              return {
+                name: subItem.designation,
+                path: `/promotion/${subItem.id_annee}/${subItem.id_niveau}`
+              }
+            });
+
+            console.log("SubItems : ", subItems);
+            return {
+              name: `Année ${item.debut} - ${item.fin}`,
+              icon: <ListIcon />,
+              subItems
+            }
+          } else {
+            return {
+              name: `Année ${item.debut} - ${item.fin}`,
+              icon: <ListIcon />,
+              path: "/"
+            }
+
+          }
+        });
+        setMenu(newMenu);
+      })
+      .catch(error => console.log(error));
+  }, []); // Dépendances vides car on veut charger qu'une seule fois
+
+  useEffect(() => {
+    console.log("Menu : ", menu);
+    console.log("User Info : ", jurys)
+  }, [menu]);
 
   const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
     setOpenSubmenu((prevOpenSubmenu) => {
@@ -367,6 +399,7 @@ const AppSidebar: React.FC = () => {
               height={32}
             />
           )}
+          <h1>Module Jury</h1>
         </Link>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
@@ -386,7 +419,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {menu && renderMenuItems(menu, "main")}
             </div>
 
             <div className="">
@@ -403,7 +436,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(othersItems, "others")}
+              {menu && renderMenuItems(menu, "others")}
             </div>
           </div>
         </nav>
