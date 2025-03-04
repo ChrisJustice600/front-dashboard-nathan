@@ -111,6 +111,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const [menu, setMenu] = useState<[] | NavItem[]>([]);
+
   const { jurys } = useAuthStore();
   const pathname = usePathname();
 
@@ -198,7 +199,7 @@ const AppSidebar: React.FC = () => {
                 {nav.subItems.map((subItem) => {
                   
                   const params = subItem.path.split('/');
-                  const path = menuType == "main" ? subItem.path : `/produits/${params[2]}/${params[3]}`;
+                  const path = menuType == "main" ? subItem.path : `/produits/${params[2]}/${params[3]}/${params[4]}`;
                   return (
                     <li key={subItem.name}>
                       <Link
@@ -309,7 +310,7 @@ const AppSidebar: React.FC = () => {
             const subItems = subMenu.map((subItem: any) => {
               return {
                 name: subItem.designation,
-                path: `/promotion/${subItem.id_annee}/${subItem.id_niveau}`
+                path: `/promotion/${subItem.id_annee}/${subItem.id_niveau}/${subItem.designation}`,
               }
             });
 
@@ -328,7 +329,10 @@ const AppSidebar: React.FC = () => {
 
           }
         });
-        setMenu(newMenu);
+
+        const menuItems = [...menu, ...newMenu];
+        console.log('Menu Items ', menuItems)
+        setMenu(menuItems);
       })
       .catch(error => console.log(error));
   }, []); // Dépendances vides car on veut charger qu'une seule fois
@@ -399,12 +403,36 @@ const AppSidebar: React.FC = () => {
               height={32}
             />
           )}
-          <h1>Module Jury</h1>
         </Link>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
+            <div>              
+              <ul className="flex flex-col gap-4">
+                <li>
+                  <Link
+                    href="/"
+                    className={`menu-item group ${
+                      isActive("/") ? "menu-item-active" : "menu-item-inactive"
+                    }`}
+                  >
+                    <span
+                      className={`${
+                        isActive("/")
+                          ? "menu-item-icon-active"
+                          : "menu-item-icon-inactive"
+                      }`}
+                    >
+                      <GridIcon />
+                    </span>
+                    {(isExpanded || isHovered || isMobileOpen) && (
+                      <span className={`menu-item-text`}>Tableau de Bord</span>
+                    )}
+                  </Link>
+                </li>
+              </ul>
+            </div>
             <div>
               <h2
                 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
