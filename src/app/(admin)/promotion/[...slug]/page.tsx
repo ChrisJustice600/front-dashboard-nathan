@@ -65,7 +65,7 @@ export default function Page() {
       <PageBreadcrumb pageTitle={`${current ? decodeURIComponent(current[2]) : ""}`} />
       <div className='space-y-6'>
         <ComponentCard title={`${promotion?.vision ? 'Résultat accessible' : 'Résultat non accessible'}`}>
-          <Button size='sm' variant='outline' onClick={openFullscreenModal}>
+          {/* <Button size='sm' variant='outline' onClick={openFullscreenModal}>
             Open Modal
           </Button>
           
@@ -76,7 +76,7 @@ export default function Page() {
             onSave={handleSave}
           />
 
-          <BasicTableOne />
+          <BasicTableOne /> */}
           <StudentPercentageTable data={students || { unites: {} }} />
         </ComponentCard>
       </div>

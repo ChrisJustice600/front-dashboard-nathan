@@ -126,7 +126,7 @@ const StudentPercentageTable = ({ data }: { data: any }) => {
           </div>
         </div>
         <Button size='sm' variant='outline' onClick={openFullscreenModal}>
-            Open Modal
+            Grille de délibération
         </Button>
       </div>
 
