@@ -202,7 +202,7 @@ const StudentPercentageTable = ({ data }: { data: any }) => {
         isOpen={isFullscreenModalOpen}
         onClose={closeFullscreenModal}
         data={data}  // Passez vos données ici
-        onSave={() => console.log('Saving changes...')}
+        onSave={(modification) => console.log('Saving changes...', modification)}
       />
     </div>
   );
