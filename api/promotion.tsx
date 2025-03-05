@@ -19,7 +19,64 @@ const apiPromotion = {
             if (error instanceof Error) {
                 throw new Error(error.message);
             } else {
-                throw new Error('An unknown error occurred');
+                throw new Error('An unknown error occurred when to try getting data of grille');
+            }
+        }
+    },
+    changeCote : async ({value, justification, lastValue, agentId, coteId, type, token} : {value: Number, justification: String, lastValue: Number, agentId: Number, coteId: Number, type: String, token: String}) => {
+        try {
+            const resp = await fetch(`${api.baseURL}/promotions/cote/${coteId}/${type}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    value,
+                    justification,
+                    lastValue,
+                    agentId
+                })
+            });
+            if (resp.ok) {
+                const response = await resp.json();
+                return response.success ? response : [];
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message);
+            } else {
+                throw new Error('An unknown error occurred when to try changing cote of student')
+            }
+        }
+    },
+    insertCote : async ({value, justification, matiereId, etudiantId, anneeId, agentId, type, token} : {value: Number, justification: String, matiereId: Number, etudiantId: Number, anneeId: Number, agentId: Number, type: String, token: String}) => {
+        try {
+            const resp = await fetch(`${api.baseURL}/promotions/cote/${type}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    value,
+                    justification,
+                    matiereId,
+                    etudiantId,
+                    type,
+                    anneeId,
+                    agentId
+                })
+            });
+            if (resp.ok) {
+                const response = await resp.json();
+                return response.success ? response : [];
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message);
+            } else {
+                throw new Error('An unknown error occurred when to try changing cote of student')
             }
         }
     },

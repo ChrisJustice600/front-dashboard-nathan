@@ -110,10 +110,17 @@ const othersItems: NavItem[] = [
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const [menu, setMenu] = useState<[] | NavItem[]>([]);
-
+  const [openSubmenu, setOpenSubmenu] = useState<{
+    type: "main" | "others";
+    index: number;
+  } | null>(null);
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
+    {}
+  );
+  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { jurys } = useAuthStore();
   const pathname = usePathname();
+  const [menuData, setMenuData] = useState<any[]>([]);
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -248,15 +255,6 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   // const isActive = (path: string) => path === pathname;
    const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
@@ -299,43 +297,46 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
-  const memoizedMenu = useMemo(() => {
-    apiAnnees.getAnnees()
-      .then(api => {
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      try {
+        const api = await apiAnnees.getAnnees();
         const data = api.data;
-        const newMenu = data.map((item: any) => {
-          const subMenu = jurys.filter(jury => jury.id_annee === item.id);
+        setMenuData(data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
 
-          if(subMenu.length > 0) {
-            const subItems = subMenu.map((subItem: any) => {
-              return {
-                name: subItem.designation,
-                path: `/promotion/${subItem.id_annee}/${subItem.id_niveau}/${subItem.designation}`,
-              }
-            });
+    fetchMenuItems();
+  }, []); // Exécuté une seule fois au montage
 
-            console.log("SubItems : ", subItems);
-            return {
-              name: `Année ${item.debut} - ${item.fin}`,
-              icon: <ListIcon />,
-              subItems
-            }
-          } else {
-            return {
-              name: `Année ${item.debut} - ${item.fin}`,
-              icon: <ListIcon />,
-              path: "/"
-            }
+  const menu = useMemo(() => {
+    if (!menuData.length) return [];
 
-          }
-        });
+    return menuData.map((item: any) => {
+      const subMenu = jurys.filter(jury => jury.id_annee === item.id);
 
-        const menuItems = [...menu, ...newMenu];
-        console.log('Menu Items ', menuItems)
-        setMenu(menuItems);
-      })
-      .catch(error => console.log(error));
-  }, []); // Dépendances vides car on veut charger qu'une seule fois
+      if (subMenu.length > 0) {
+        const subItems = subMenu.map((subItem: any) => ({
+          name: subItem.designation,
+          path: `/promotion/${subItem.id_annee}/${subItem.id_niveau}/${subItem.designation}`,
+        }));
+
+        return {
+          name: `Année ${item.debut} - ${item.fin}`,
+          icon: <ListIcon />,
+          subItems
+        };
+      }
+
+      return {
+        name: `Année ${item.debut} - ${item.fin}`,
+        icon: <ListIcon />,
+        path: "/"
+      };
+    });
+  }, [menuData, jurys]); // Recalculé uniquement si menuData ou jurys change
 
   useEffect(() => {
     console.log("Menu : ", menu);

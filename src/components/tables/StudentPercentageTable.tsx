@@ -18,7 +18,7 @@ interface Student {
   decision: string;
 }
 
-const StudentPercentageTable = ({ data }: { data: any }) => {
+const StudentPercentageTable = ({ data, anneeId }: { data: any, anneeId: number }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -109,6 +109,9 @@ const StudentPercentageTable = ({ data }: { data: any }) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
+  const handleSavingCote = (data) => {
+    console.log("Request Info : ", data)
+  }
   return (
     <div className="space-y-4">
       {/* Barre de recherche et bouton */}
@@ -202,7 +205,8 @@ const StudentPercentageTable = ({ data }: { data: any }) => {
         isOpen={isFullscreenModalOpen}
         onClose={closeFullscreenModal}
         data={data}  // Passez vos données ici
-        onSave={(modification) => console.log('Saving changes...', modification)}
+        onSave={handleSavingCote}
+        annee={anneeId}
       />
     </div>
   );

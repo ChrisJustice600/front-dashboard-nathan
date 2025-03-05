@@ -77,7 +77,7 @@ export default function Page() {
           />
 
           <BasicTableOne /> */}
-          <StudentPercentageTable data={students || { unites: {} }} />
+          <StudentPercentageTable data={students || { unites: {} }} anneeId={promotion?.id_annee}/>
         </ComponentCard>
       </div>
     </div>

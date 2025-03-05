@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Student } from './types';
@@ -8,6 +8,8 @@ import { StudentCard } from './StudentCard';
 import { TeachingUnitCell } from './TeachingUnitCell';
 import Button from '@/components/ui/button/Button';
 import { JustificationModal } from "../modals/JustificationModal";
+import useAuthStore from '../../../store/userStore';
+import apiPromotion from '../../../api/promotion';
 
 interface FormattedStudent {
   id: number;
@@ -70,13 +72,17 @@ export const ResultsModal = ({
   isOpen,
   onClose,
   data,
-  onSave
+  onSave,
+  annee
 }: {
   isOpen: boolean;
   onClose: () => void;
   data: any;
   onSave: (modifications: any) => void;
+  annee: number;
 }) => {
+  const { user, token } = useAuthStore();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // Nombre d'étudiants par page
@@ -90,13 +96,14 @@ export const ResultsModal = ({
     callback: null
   });
   const [modifiedNotes, setModifiedNotes] = useState(new Map());
-
+  console.log(annee)
   const handleNoteChange = (
     etudiantId: number,
     matiereId: number,
     newValue: string,
     etudiantNom: string,
-    matiere: string
+    matiere: string,
+    existingNote?: { noteId?: number; total?: number } // Ajout des informations existantes
   ) => {
     setJustificationModal({
       isOpen: true,
@@ -106,28 +113,108 @@ export const ResultsModal = ({
       matiere,
       newNote: newValue,
       callback: (justification: string) => {
-        setModifiedNotes(prev => new Map(prev).set(`${etudiantId}-${matiereId}`, {
+        const modification = {
           value: parseFloat(newValue),
           justification,
-          timestamp: new Date().toISOString()
-        }));
+          timestamp: new Date().toISOString(),
+          // Informations supplémentaires
+          type: existingNote?.noteId ? 'modification' : 'insertion',
+          noteId: existingNote?.noteId,
+          previousValue: existingNote?.total,
+          etudiantId,
+          matiereId
+        };
+
+        setModifiedNotes(prev => new Map(prev).set(`${etudiantId}-${matiereId}`, modification));
         setJustificationModal(prev => ({ ...prev, isOpen: false }));
+
+        // Log des informations
+        console.log('Modification détaillée:', {
+          type: existingNote?.noteId ? 'Modification' : 'Nouvelle note',
+          etudiant: {
+            id: etudiantId,
+            nom: etudiantNom
+          },
+          matiere: {
+            id: matiereId,
+            nom: matiere
+          },
+          note: {
+            noteId: existingNote?.noteId,
+            ancienneValeur: existingNote?.total,
+            nouvelleValeur: newValue
+          },
+          justification,
+          timestamp: modification.timestamp
+        });
       }
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const modifications = Array.from(modifiedNotes.entries()).map(([key, data]) => {
-      const [etudiantId, matiereId] = key.split('-');
       return {
-        etudiantId: parseInt(etudiantId),
-        matiereId: parseInt(matiereId),
+        type: data.type,
+        etudiantId: data.etudiantId,
+        matiereId: data.matiereId,
+        noteId: data.noteId,
         newValue: data.value,
+        previousValue: data.previousValue,
         justification: data.justification,
         timestamp: data.timestamp
       };
     });
+    let errors:boolean[] = [];
 
+    errors = await Promise.all(modifications.map(async request => {
+        if (request.type == 'insertion' && token && user?.id && request.justification) {
+          const payload = {
+            value: request.newValue,
+            justification: request.justification,
+            matiereId: request.matiereId,
+            etudiantId: request.etudiantId,
+            anneeId: annee,
+            agentId: user.id,
+            type: 'rattrapage',
+          }
+
+          return apiPromotion.insertCote({...payload, token})
+            .then(data => data.success)
+            .catch(err => {
+              console.error(err)
+              return false;
+            });
+
+        } else if (user?.id && token && request.justification) {
+          const payload = {
+            value: request.newValue,
+            justification: request.justification,
+            lastValue: request.previousValue,
+            agentId: user.id,
+            coteId: request.noteId,
+            type: 'examen'
+          }
+
+          return apiPromotion.changeCote({...payload, token})
+            .then(data => data.success)
+            .catch(err => {
+              console.error(err)
+              return false;
+            });
+
+        } else {
+          console.log("User not connected")
+          return false;
+        }
+      })
+    );
+
+    if (errors.includes(false)) {
+      console.log('Une erreur est survenue lors de la sauvegarde des modifications');
+      return;
+    }  
+    
+    console.log('Toutes les modifications à sauvegarder:', errors);
     onSave(modifications);
   };
 
@@ -178,15 +265,13 @@ export const ResultsModal = ({
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} isFullscreen>
-        <div className='mt-20 bg-gray-50  dark:bg-gray-900'>
-          {/* Header amélioré */}
+        <div className='mt-20 bg-gray-50 dark:bg-gray-900'>
           <div className="top-0 z-30 bg-white dark:bg-gray-800 shadow-sm">
             <div className="sticky px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">
                 Grille de délibération
               </h2>
               <div className="flex items-center gap-4">
-                {/* Barre de recherche améliorée */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
@@ -215,13 +300,11 @@ export const ResultsModal = ({
             </div>
           </div>
 
-          {/* Container principal avec padding et ombre */}
           <div className="flex-1 overflow-hidden overflow-y-auto pb-20 max-h-[800px] p-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
               <div className="overflow-x-auto">
-                <table className="w-full divide-y  divide-gray-200 dark:divide-gray-700">
+                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="fixed sticky">
-                    {/* En-tête des unités */}
                     <tr className="bg-gray-50">
                       <th className="sticky left-0 z-20 px-4 py-2 border bg-gray-50 min-w-[100px]">
                         Étudiant
@@ -229,40 +312,37 @@ export const ResultsModal = ({
                       {Object.values(data?.unites || {}).map((unite: any) => (
                         <th 
                           key={unite.code} 
-                          colSpan={Object.keys(unite.matieres).length + 2} // +2 for total and decision
+                          colSpan={Object.keys(unite.matieres).length + 2}
                           className="sticky px-4 py-2 border text-center font-semibold bg-gray-100"
                         >
                           {unite.designation} ({unite.code})
                         </th>
                       ))}
                     </tr>
-                    {/* En-tête des matières */}
-                    <>
-                      <tr key={'1'} className="bg-gray-50">
-                        <th className="sticky left-0 z-20 px-4 py-2 border bg-gray-50"></th>
-                        {Object.values(data?.unites || {}).map((unite: any) => (
-                          <>
-                            {Object.values(unite.matieres).map((matiere: any) => (
-                              <th 
-                                key={matiere.id} 
-                                className="px-4 py-2 border min-w-[150px] font-normal"
-                              >
-                                {matiere.designation}
-                                <div className="text-xs text-gray-500">
-                                  ({matiere.credit} cr.)
-                                </div>
-                              </th>
-                            ))}
-                            <th className="px-4 py-2 border min-w-[100px] font-semibold text-gray-600">
-                              Moyenne
+                    <tr className="bg-gray-50">
+                      <th className="sticky left-0 z-20 px-4 py-2 border bg-gray-50"></th>
+                      {Object.values(data?.unites || {}).map((unite: any) => (
+                        <React.Fragment key={unite.code}>
+                          {Object.values(unite.matieres).map((matiere: any) => (
+                            <th 
+                              key={matiere.id} 
+                              className="px-4 py-2 border min-w-[150px] font-normal"
+                            >
+                              {matiere.designation}
+                              <div className="text-xs text-gray-500">
+                                ({matiere.credit} cr.)
+                              </div>
                             </th>
-                            <th className="px-4 py-2 border min-w-[80px] font-semibold text-gray-600">
-                              Décision
-                            </th>
-                          </>
-                        ))}
-                      </tr>
-                    </>
+                          ))}
+                          <th key={`${unite.code}-moyenne`} className="px-4 py-2 border min-w-[100px] font-semibold text-gray-600">
+                            Moyenne
+                          </th>
+                          <th key={`${unite.code}-decision`} className="px-4 py-2 border min-w-[80px] font-semibold text-gray-600">
+                            Décision
+                          </th>
+                        </React.Fragment>
+                      ))}
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {paginatedStudents.map((student: any, index: number) => (
@@ -276,7 +356,7 @@ export const ResultsModal = ({
                           </div>
                         </td>
                         {Object.values(data?.unites || {}).map((unite: any) => (
-                          <>
+                          <React.Fragment key={`${student.id}-${unite.code}`}>
                             {Object.values(unite.matieres).map((matiere: any) => {
                               const note = matiere.notes.find(
                                 (n: any) => n.etudiantId === student.id
@@ -291,12 +371,18 @@ export const ResultsModal = ({
                                       matiere.id,
                                       e.target.value,
                                       student.nom,
-                                      matiere.designation
+                                      matiere.designation,
+                                      note ? { 
+                                        noteId: note.noteId, 
+                                        total: note.total 
+                                      } : undefined
                                     )}
                                     className={`w-20 px-2 py-1 text-center border rounded-md
                                              focus:outline-none focus:ring-2 focus:ring-blue-500
                                              ${!note ? 'bg-yellow-50' : ''}
-                                             ${modifiedNotes.has(`${student.id}-${matiere.id}`) ? 'border-blue-500' : ''}`}
+                                             ${modifiedNotes.has(`${student.id}-${matiere.id}`) 
+                                               ? 'border-blue-500 bg-blue-50' 
+                                               : ''}`}
                                     min="0"
                                     max="20"
                                     step="0.25"
@@ -308,7 +394,7 @@ export const ResultsModal = ({
                             {(() => {
                               const { moyenne, decision } = calculateUEStats(unite, student);
                               return (
-                                <>
+                                <React.Fragment key={`${student.id}-${unite.code}-stats`}>
                                   <td className="px-4 py-2 border text-center font-medium">
                                     <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
                                       {moyenne.toFixed(2)}
@@ -323,10 +409,10 @@ export const ResultsModal = ({
                                       {decision}
                                     </span>
                                   </td>
-                                </>
+                                </React.Fragment>
                               );
                             })()}
-                          </>
+                          </React.Fragment>
                         ))}
                       </tr>
                     ))}
@@ -336,7 +422,6 @@ export const ResultsModal = ({
             </div>
           </div>
 
-          {/* Footer amélioré */}
           <div className="sticky bottom-0 z-30 bg-white dark:bg-gray-800 shadow-lg-up border-t dark:border-gray-700">
             <div className="px-6 py-4 flex justify-between items-center">
               <div className="flex items-center gap-4">
