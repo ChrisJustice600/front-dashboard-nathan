@@ -209,13 +209,16 @@ export const ResultsModal = ({
       })
     );
 
-    if (errors.includes(false)) {
-      console.log('Une erreur est survenue lors de la sauvegarde des modifications');
-      return;
-    }  
-    
+
     console.log('Toutes les modifications à sauvegarder:', errors);
-    onSave(modifications);
+    if (errors.length > 0) {
+      if (errors.includes(false)) {
+        console.log('Une erreur est survenue lors de la sauvegarde des modifications');
+        return;
+      }  
+      
+    }
+    onSave();
   };
 
   // Récupérer tous les étudiants uniques
